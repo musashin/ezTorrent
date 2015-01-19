@@ -26,7 +26,7 @@ class cmdLoop:
 
         self.clear()
 
-    def clear(self):
+    def clear(self, *args):
         self.offset = 0
         self.last_search_result = dict()
         self.last_query_string = ''
@@ -37,6 +37,8 @@ class cmdLoop:
         print '\t-\'s\'\tSearch'
         print '\t-\'d\'\tDownload'
         print '\t-\'n\'\tNext'
+        print '\t-\'p\'\tPrevious'
+        print '\t-\'c\'\tClear'
         print '\t-\'q\'\tQuit'
         return raw_input('Prompt: ')
 
@@ -68,10 +70,16 @@ class cmdLoop:
 
         self.print_search_results()
 
-    def download(self, *args):
+    def previous(self, *args):
+        self.offset -= self.__result_len_limit__
 
-        if not os.path.exists(r'.\temp'):
-            os.makedirs(r'.\temp')
+        self.offset = max(0, self.offset)
+
+        self.last_search_result = self.search_t411()
+
+        self.print_search_results()
+
+    def download(self, *args):
 
         torrent = self.t411.download(self.last_search_result['torrents'][int(args[0])]['id'])
 
@@ -82,7 +90,9 @@ class cmdLoop:
         choice = ''
         actions = {'s': self.search,
                    'd': self.download,
-                   'n': self.next}
+                   'n': self.next,
+                   'p': self.previous,
+                   'c': self.clear}
 
         while choice != 'q':
 
