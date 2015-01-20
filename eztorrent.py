@@ -40,6 +40,7 @@ class cmdLoop:
         print '\t-\'p\'\tPrevious'
         print '\t-\'c\'\tClear'
         print '\t-\'i\'\tInfo'
+        print '\t-\'i\'\tUser'
         print '\t-\'q\'\tQuit'
         return raw_input('Prompt: ')
 
@@ -71,6 +72,12 @@ class cmdLoop:
         for key, value in infos['terms'].iteritems():
             print '\t- ' + key + ':\t' + value
 
+    def user(self, *args):
+        infos = self.t411.me().json()
+
+        print 'Uploaded:\t'+str(infos['uploaded'])+' bytes'
+        print 'Downloaded:\t'+str(infos['downloaded'])+' bytes'
+        print 'Ratio:\t'+str(float(infos['uploaded'])/float(infos['downloaded']))
 
     def next(self, *args):
         if self.last_search_result:
@@ -108,7 +115,8 @@ class cmdLoop:
                    'n': self.next,
                    'p': self.previous,
                    'c': self.clear,
-                   'i': self.info}
+                   'i': self.info,
+                   'u': self.user}
 
         while choice != 'q':
 
