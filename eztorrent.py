@@ -39,6 +39,7 @@ class cmdLoop:
         print '\t-\'n\'\tNext'
         print '\t-\'p\'\tPrevious'
         print '\t-\'c\'\tClear'
+        print '\t-\'i\'\tInfo'
         print '\t-\'q\'\tQuit'
         return raw_input('Prompt: ')
 
@@ -63,25 +64,39 @@ class cmdLoop:
 
         self.print_search_results()
 
+    def info(self, *args):
+
+        infos =  self.t411.details(self.last_search_result['torrents'][int(*args[0])]['id']).json()
+
+        for key, value in infos['terms'].iteritems():
+            print '\t- ' + key + ':\t' + value
+
+
     def next(self, *args):
-        self.offset += self.__result_len_limit__
+        if self.last_search_result:
+            self.offset += self.__result_len_limit__
 
-        self.last_search_result = self.search_t411()
+            self.last_search_result = self.search_t411()
 
-        self.print_search_results()
+            self.print_search_results()
+        else:
+            print 'You need to make a search first.'
 
     def previous(self, *args):
-        self.offset -= self.__result_len_limit__
+        if self.last_search_result:
+            self.offset -= self.__result_len_limit__
 
-        self.offset = max(0, self.offset)
+            self.offset = max(0, self.offset)
 
-        self.last_search_result = self.search_t411()
+            self.last_search_result = self.search_t411()
 
-        self.print_search_results()
+            self.print_search_results()
+        else:
+            print 'You need to make a search first.'
 
     def download(self, *args):
 
-        torrent = self.t411.download(self.last_search_result['torrents'][int(args[0])]['id'])
+        torrent = self.t411.download(self.last_search_result['torrents'][int(*args[0])]['id'])
 
         self.transmission.add_torrent(base64.b64encode(torrent.content))
 
@@ -92,7 +107,8 @@ class cmdLoop:
                    'd': self.download,
                    'n': self.next,
                    'p': self.previous,
-                   'c': self.clear}
+                   'c': self.clear,
+                   'i': self.info}
 
         while choice != 'q':
 
