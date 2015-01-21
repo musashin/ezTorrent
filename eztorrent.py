@@ -58,28 +58,29 @@ class cmdLoop:
     def search_t411(self):
         return self.t411.search(self.get_search_string(self.last_query_string)).json()
 
-    def search(self, *args):
+    def search(self, cmdArgs, filters):
 
-        self.last_query_string = str(*args[0])
+        self.last_query_string = str(cmdArgs)
         self.last_search_result = self.search_t411()
 
         self.print_search_results()
 
-    def info(self, *args):
+    def info(self, cmdArgs, filters):
 
-        infos =  self.t411.details(self.last_search_result['torrents'][int(*args[0])]['id']).json()
+        infos =  self.t411.details(self.last_search_result['torrents'][int(cmdArgs)]['id']).json()
 
         for key, value in infos['terms'].iteritems():
             print '\t- ' + key + ':\t' + value
 
-    def user(self, *args):
+    def user(self, cmdArgs, filters):
+
         infos = self.t411.me().json()
 
         print 'Uploaded:\t'+str(infos['uploaded'])+' bytes'
         print 'Downloaded:\t'+str(infos['downloaded'])+' bytes'
         print 'Ratio:\t'+str(float(infos['uploaded'])/float(infos['downloaded']))
 
-    def next(self, *args):
+    def next(self, cmdArgs, filterss):
         if self.last_search_result:
             self.offset += self.__result_len_limit__
 
@@ -89,7 +90,7 @@ class cmdLoop:
         else:
             print 'You need to make a search first.'
 
-    def previous(self, *args):
+    def previous(self, cmdArgs, filters):
         if self.last_search_result:
             self.offset -= self.__result_len_limit__
 
@@ -101,15 +102,30 @@ class cmdLoop:
         else:
             print 'You need to make a search first.'
 
-    def download(self, *args):
+    def download(self, cmdArgs, filters):
 
-        torrent = self.t411.download(self.last_search_result['torrents'][int(*args[0])]['id'])
+        torrent = self.t411.download(self.last_search_result['torrents'][int(cmdArgs)]['id'])
 
         self.transmission.add_torrent(base64.b64encode(torrent.content))
 
+    @staticmethod
+    def parse_command_line(line):
+
+        filters = list()
+
+        for i, ele in enumerate(line.split('|')):
+            if i:
+                print i
+                filters.append({'type':(ele.split())[0], 'arg':(ele.split())[1:]})
+            else:
+                cmd = (ele.split())[0]
+                cmdArgs = (ele.split())[1:][0]
+
+        return cmd, cmdArgs, filters
+
     def run(self):
 
-        choice = ''
+        cmd = ''
         actions = {'s': self.search,
                    'd': self.download,
                    'n': self.next,
@@ -118,16 +134,17 @@ class cmdLoop:
                    'i': self.info,
                    'u': self.user}
 
-        while choice != 'q':
+        while cmd != 'q':
 
-            choice = self.__main_menu()
+            cmd, cmdArgs, filters = self.parse_command_line(self.__main_menu())
 
             try:
-                actions[(choice.split())[0]]((choice.split())[1:])
+                actions[cmd](cmdArgs, filters)
             except KeyError as e:
-                print 'Command {!s} not recognized'.format(choice)
+                print 'Command {!s} not recognized'.format(cmd)
             except Exception as e:
-                print 'Command {!s} failed -{!s}-'.format((choice.split())[1:],e)
+                print 'Command {!s} failed -{!s}-'.format((cmd.split())[1:], e)
+
 
 
 
