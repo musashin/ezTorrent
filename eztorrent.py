@@ -45,9 +45,19 @@ class cmdLoop:
         print '\t-\'q\'\tQuit'
         return raw_input('Prompt: ')
 
-    def get_search_string(self, query):
+    def get_search_string(self, query, filters):
 
-        return query+'?offset='+str(self.offset)+'&limit='+str(self.__result_len_limit__)
+        query_filters_names = ('cid',)
+
+        base_search_string = query+'?offset='+str(self.offset)+'&limit='+str(self.__result_len_limit__)
+
+        query_filters = [(index, filter['type'], filter['arg']) for index, filter in enumerate(filters) if filter['type'] in query_filters_names]
+
+        if query_filters:
+            for filter in query_filters:
+                base_search_string += '&{!s}={!s}'.format(filter[1], filter[2])
+
+        return base_search_string
 
     def print_search_results(self):
 
@@ -61,13 +71,13 @@ class cmdLoop:
         else:
             print 'Nothing found.'
 
-    def search_t411(self):
-        return self.t411.search(self.get_search_string(self.last_query_string)).json()
+    def search_t411(self, filters):
+        return self.t411.search(self.get_search_string(self.last_query_string, filters)).json()
 
     def search(self, cmdArgs, filters):
 
         self.last_query_string = str(cmdArgs)
-        self.last_search_result = self.search_t411()
+        self.last_search_result = self.search_t411(filters)
 
         self.print_search_results()
 
@@ -111,17 +121,15 @@ class cmdLoop:
     def cat(self, cmdArgs, filters):
 
         cat_list = self.t411.categories().json()
-        if cmdArgs:
-            print cat_list
-        else:
-            for cat_id, cat_info in cat_list.iteritems():
-                if 'id' in cat_info:
 
-                    print '\t-{!s}:\t{!s}'.format(cat_id, cat_info['name'].encode('utf-8'))
+        for cat_id, cat_info in cat_list.iteritems():
+            if 'id' in cat_info:
 
-                    if 'cats' in cat_info:
-                        for subcat_id, subcat_info in cat_info['cats'].iteritems():
-                            print '\t\t-{!s}:\t{!s}'.format(subcat_id, subcat_info['name'].encode('utf-8'))
+                print '\t-{!s}:\t{!s}'.format(cat_id, cat_info['name'].encode('utf-8'))
+
+                if 'cats' in cat_info:
+                    for subcat_id, subcat_info in cat_info['cats'].iteritems():
+                        print '\t\t-{!s}:\t{!s}'.format(subcat_id, subcat_info['name'].encode('utf-8'))
 
 
     def download(self, cmdArgs, filters):
@@ -139,7 +147,7 @@ class cmdLoop:
 
         for i, ele in enumerate(line.split('|')):
             if i:
-                filters.append({'type':(ele.split())[0], 'arg':(ele.split())[1:]})
+                filters.append({'type': (ele.split())[0], 'arg': (ele.split())[1:]})
             else:
                 cmd = (ele.split())[0]
 
