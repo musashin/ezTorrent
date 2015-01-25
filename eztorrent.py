@@ -3,6 +3,7 @@ import t411
 import os
 import transmissionrpc
 import base64
+import inspect
 
 #https://api.t411.me/
 
@@ -10,8 +11,17 @@ class cmdLoop:
 
     __result_len_limit__ = 20
 
-    def __init__(self):
+    def command(command_string):
+        def decorator(func):
+            func.command_string = command_string
+            return func
 
+        return decorator
+
+    def __init__(self):
+        self.__load_commands()
+        self.__create_menu()
+        return
         try:
             print 'Connecting to T411'
             self.t411 = t411.T411()
@@ -25,6 +35,26 @@ class cmdLoop:
             print 'Could not connect to Transmission: '+str(e)
 
         self.clear()
+
+    def __load_commands(self):
+        self.commands = [{'cmd': method[1].command_string, 'method': method[1], 'doc': inspect.getdoc(method[1])}
+                         for method in inspect.getmembers(self, predicate=inspect.ismethod) if hasattr(method[1], 'command_string')]
+
+        print self.commands
+
+    def __create_menu(self):
+
+        self.menu = 'T411:\n'
+
+        for cmd in self.commands:
+            doclines = cmd['doc'].splitlines()
+            self.menu += '\t-{!s}:\t{!s}\n'.format(cmd['cmd'], doclines[0])
+
+            if len(doclines)>1:
+                for line in doclines[1:]:
+                    self.menu += '\t\t{!s}\n'.format(line)
+
+        print self.menu
 
     def clear(self, *args):
         self.offset = 0
@@ -74,14 +104,25 @@ class cmdLoop:
     def search_t411(self, filters):
         return self.t411.search(self.get_search_string(self.last_query_string, filters)).json()
 
+
+    @command('s')
     def search(self, cmdArgs, filters):
+        """
+            Search Torrent
+            yrst
+        """
+
 
         self.last_query_string = str(cmdArgs)
         self.last_search_result = self.search_t411(filters)
 
         self.print_search_results()
 
+    @command('i')
     def info(self, cmdArgs, filters):
+        """
+            Get Torrent Info
+        """
 
         infos =  self.t411.details(self.last_search_result['torrents'][int(cmdArgs)]['id']).json()
 
