@@ -4,6 +4,7 @@ import os
 import transmissionrpc
 import base64
 import inspect
+import re
 
 #https://api.t411.me/
 
@@ -21,6 +22,9 @@ class cmdLoop:
     def __init__(self):
         self.__load_commands()
         self.__create_menu()
+
+        self.query_filters_names = ('cid',)
+        self.result_filters = {'grep': self.grep_results}
 
         try:
             print 'Connecting to T411'
@@ -65,17 +69,28 @@ class cmdLoop:
 
     def get_search_string(self, query, filters):
 
-        query_filters_names = ('cid',)
-
         base_search_string = query+'?offset='+str(self.offset)+'&limit='+str(self.__result_len_limit__)
 
-        query_filters = [(index, filter['type'], filter['arg']) for index, filter in enumerate(filters) if filter['type'] in query_filters_names]
+        query_filters = [(index, filter['type'], filter['arg']) for index, filter in enumerate(filters)
+                         if filter['type'] in self.query_filters_names]
 
         if query_filters:
             for filter in query_filters:
                 base_search_string += '&{!s}={!s}'.format(filter[1], filter[2])
 
         return base_search_string
+
+    @staticmethod
+    def grep_results(results, filter_argument):
+
+        filter = re.compile(filter_argument[0])
+
+        filtered_result = dict()
+
+        filtered_result['total'] = results['total']
+        filtered_result['torrents'] = [torrent for torrent in results['torrents'] if filter.search(torrent['name'])]
+
+        return filtered_result
 
     def print_search_results(self):
 
@@ -90,7 +105,13 @@ class cmdLoop:
             print 'Nothing found.'
 
     def search_t411(self, filters):
-        return self.t411.search(self.get_search_string(self.last_query_string, filters)).json()
+        query_result = self.t411.search(self.get_search_string(self.last_query_string, filters)).json()
+
+        for filter in filters:
+            if filter['type'] in self.result_filters:
+                query_result = self.result_filters[filter['type']](query_result, filter['arg'])
+
+        return query_result
 
     @command('clear')
     def clear(self, *args):
@@ -100,16 +121,29 @@ class cmdLoop:
         self.offset = 0
         self.last_search_result = dict()
         self.last_query_string = ''
+        self.last_query_filters = ''
 
+    @command('limit')
+    def limit(self, cmdArgs, filters):
+        """
+        set query limit
+        """
+        if cmdArgs:
+            try:
+                self.__result_len_limit__ = int(cmdArgs)
+            except:
+                pass
+
+        print 'Query limited to {!s} results.'.format(self.__result_len_limit__)
 
     @command('search')
     def search(self, cmdArgs, filters):
         """
             [query string] -> Search Torrent
-            accept filters:
-                | cuid category_id
+            accept filters: cid [category_id] or grep [name regex filter]
         """
         self.last_query_string = str(cmdArgs)
+        self.last_query_filters = filters
         self.last_search_result = self.search_t411(filters)
 
         self.print_search_results()
@@ -149,7 +183,7 @@ class cmdLoop:
         if self.last_search_result:
             self.offset += self.__result_len_limit__
 
-            self.last_search_result = self.search_t411()
+            self.last_search_result = self.search_t411(self.last_query_filters)
 
             self.print_search_results()
         else:
@@ -165,7 +199,7 @@ class cmdLoop:
 
             self.offset = max(0, self.offset)
 
-            self.last_search_result = self.search_t411()
+            self.last_search_result = self.search_t411(self.last_query_filters)
 
             self.print_search_results()
         else:
