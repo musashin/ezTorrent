@@ -5,26 +5,16 @@ import transmissionrpc
 import base64
 import inspect
 import re
+from commandline import cmdline, command
 
 #https://api.t411.me/
 
-class cmdLoop:
+class T411Commands(cmdline):
 
     __result_len_limit__ = 20
 
-    def command(command_string):
-        def decorator(func):
-            func.command_string = command_string
-            return func
-
-        return decorator
-
     def __init__(self):
-        self.__load_commands()
-        self.__create_menu()
-
-        self.query_filters_names = ('cid',)
-        self.result_filters = {'grep': self.grep_results}
+        super(T411Commands, self).__init__(prompt='T411')
 
         try:
             print 'Connecting to T411'
@@ -41,31 +31,6 @@ class cmdLoop:
         self.clear()
 
         print 'Type \'help\' for help'
-
-    def __load_commands(self):
-        self.commands = {method[1].command_string:  {'method': method[1], 'doc': inspect.getdoc(method[1])}
-                         for method in inspect.getmembers(self, predicate=inspect.ismethod)
-                         if hasattr(method[1], 'command_string')}
-
-    def __create_menu(self):
-
-        self.menu = 'T411:\n'
-
-        for str, cmd in self.commands.iteritems():
-
-            try:
-                doclines = cmd['doc'].splitlines()
-                self.menu += '\t-{!s}:\t\t{!s}\n'.format(str, doclines[0])
-
-                if len(doclines)>1:
-                    for line in doclines[1:]:
-                        self.menu += '\t\t\th{!s}\n'.format(line)
-            except:
-                self.menu += '\t-{!s}\n'.format(str)
-
-    def __main_menu(self):
-
-        return raw_input('T411: ')
 
     def get_search_string(self, query, filters):
 
@@ -97,10 +62,11 @@ class cmdLoop:
         print 'Found {!s} torrent'.format(self.last_search_result['total'])
         if self.last_search_result:
             for i, torrent in enumerate(self.last_search_result['torrents']):
-                print '\t-{!s} {} [{!s} -{!s}-]'.format(i,
+                print '\t-{!s} {} [{!s} -{!s}-]\t seeders:{!s}'.format(i,
                                                         torrent['name'].encode('utf-8'),
                                                         torrent['categoryname'].encode('utf-8'),
-                                                        torrent['category'])
+                                                        torrent['category'],
+                                                        torrent['seeders'])
         else:
             print 'Nothing found.'
 
@@ -147,10 +113,6 @@ class cmdLoop:
         self.last_search_result = self.search_t411(filters)
 
         self.print_search_results()
-
-    @command('help')
-    def help(self, cmdArgs, filters):
-        print self.menu
 
     @command('info')
     def info(self, cmdArgs, filters):
@@ -225,51 +187,19 @@ class cmdLoop:
     def download(self, cmdArgs, filters):
         """
             [search result index] -> Download torrent
+            TODO: more complex download pattern
         """
 
         torrent = self.t411.download(self.last_search_result['torrents'][int(cmdArgs)]['id'])
 
+        #with open('temp.torrent', 'w') as torrent_file:
+        #    torrent_file.write(torrent.content)
+
         self.transmission.add_torrent(base64.b64encode(torrent.content))
-
-    @staticmethod
-    def parse_command_line(line):
-
-        filters = list()
-        cmdArgs = ''
-        cmd = ''
-
-        for i, ele in enumerate(line.split('|')):
-            if i:
-                filters.append({'type': (ele.split())[0], 'arg': (ele.split())[1:]})
-            else:
-                cmd = (ele.split())[0]
-
-                if len(ele.split())>1:
-                    cmdArgs = (ele.split())[1:][0]
-
-        return cmd, cmdArgs, filters
-
-    def run(self):
-
-        cmd = ''
-
-        while cmd != 'q':
-
-            cmd, cmdArgs, filters = self.parse_command_line(self.__main_menu())
-
-            try:
-                self.commands[cmd]['method'](cmdArgs, filters)
-            except KeyError as e:
-                print 'Command {!s} not recognized-{!s}-'.format(cmd, e)
-            except Exception as e:
-                print 'Command {!s} failed -{!s}-'.format((cmd.split())[1:], e)
-
-
-
 
 if __name__ == '__main__':
 
-    cli = cmdLoop()
+    cli = T411Commands()
 
     cli.run()
 
