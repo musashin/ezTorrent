@@ -16,6 +16,9 @@ class T411Commands(cmdline):
     def __init__(self):
         super(T411Commands, self).__init__(prompt='T411')
 
+        self.query_filters_names = ('cid',)
+        self.result_filters = {'grep': self.grep_results}
+
         try:
             print 'Connecting to T411'
             self.t411 = t411.T411()
@@ -198,12 +201,11 @@ class T411Commands(cmdline):
             else:
                 download_index_list = cmdArgs.split(',')
 
-
         if len(download_index_list) > 1:
             if not cmdline.confirm("Are you want to download the {!s} torrents".format(len(download_index_list))):
                 download_index_list = list()
 
-        return map(int,download_index_list)
+        return map(int, download_index_list)
 
     @command('download')
     def download(self, cmdArgs, filters):
