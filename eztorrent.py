@@ -183,6 +183,28 @@ class T411Commands(cmdline):
                     for subcat_id, subcat_info in cat_info['cats'].iteritems():
                         print '\t\t-{!s}:\t{!s}'.format(subcat_id, subcat_info['name'].encode('utf-8'))
 
+    def get_download_list(self, cmdArgs):
+
+        if cmdArgs.lower == 'all':
+
+            download_index_list = [torrent['id']for torrent in self.last_search_result['torrents']]
+
+        else:
+
+            from_to_format = re.compile(r'[\s]*(?P<start>[\d]+)[\s]*\-[\s]*(?P<end>[\d]+)[\s]*')
+            from_to = re.match(from_to_format, cmdArgs)
+            if from_to:
+                download_index_list = map(str, range(int(from_to.group('start')), int(from_to.group('end'))+1))
+            else:
+                download_index_list = cmdArgs.split(',')
+
+
+        if len(download_index_list) > 1:
+            if not cmdline.confirm("Are you want to download the {!s} torrents".format(len(download_index_list))):
+                download_index_list = list()
+
+        return map(int,download_index_list)
+
     @command('download')
     def download(self, cmdArgs, filters):
         """
@@ -190,12 +212,23 @@ class T411Commands(cmdline):
             TODO: more complex download pattern
         """
 
-        torrent = self.t411.download(self.last_search_result['torrents'][int(cmdArgs)]['id'])
+        download_index_list = self.get_download_list(cmdArgs)
 
-        #with open('temp.torrent', 'w') as torrent_file:
-        #    torrent_file.write(torrent.content)
+        for index in download_index_list:
 
-        self.transmission.add_torrent(base64.b64encode(torrent.content))
+            try:
+                torrent = self.t411.download(self.last_search_result['torrents'][index]['id'])
+
+                #with open('temp.torrent', 'w') as torrent_file:
+                #    torrent_file.write(torrent.content)
+
+                self.transmission.add_torrent(base64.b64encode(torrent.content))
+            except Exception as e:
+                print 'Could not add torrent {!s} to download queue [{!s}]'.\
+                        format(self.last_search_result['torrents'][index]['name'].encode('utf-8'), e)
+            else:
+                print 'successfully added torrent {!s} to download queue'\
+                    .format(self.last_search_result['torrents'][index]['name'].encode('utf-8'))
 
 if __name__ == '__main__':
 

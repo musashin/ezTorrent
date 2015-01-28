@@ -45,8 +45,14 @@ class cmdline(object):
     def quit(self, cmdArgs, filters):
         pass
 
-    def __prompt(self):
+    @staticmethod
+    def confirm(question):
 
+        answer = raw_input(question+ ' (Y/N): ')
+
+        return answer.lower() == 'y'
+
+    def __prompt(self):
         return raw_input(self.prompt + ': ')
 
     @command('help')
@@ -75,7 +81,7 @@ class cmdline(object):
 
         cmd = ''
 
-        while cmd != 'quitqu':
+        while cmd != 'quit':
 
             cmd, cmdArgs, filters = self.parse_command_line(self.__prompt())
 
