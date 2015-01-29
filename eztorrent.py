@@ -6,6 +6,8 @@ import base64
 import inspect
 import re
 from commandline import cmdline, command
+import time
+import filesize
 
 #https://api.t411.me/
 
@@ -65,11 +67,12 @@ class T411Commands(cmdline):
         print 'Found {!s} torrent'.format(self.last_search_result['total'])
         if self.last_search_result:
             for i, torrent in enumerate(self.last_search_result['torrents']):
-                print '\t-{!s} {} [{!s} -{!s}-]\t seeders:{!s}'.format(i,
+                print '\t-{!s} {} [{!s} -{!s}-]\t seeders:{!s}\t size = {!s}b'.format(i,
                                                         torrent['name'].encode('utf-8'),
                                                         torrent['categoryname'].encode('utf-8'),
                                                         torrent['category'],
-                                                        torrent['seeders'])
+                                                        torrent['seeders'],
+                                                        filesize.size(int(torrent['size'])))
         else:
             print 'Nothing found.'
 
@@ -136,9 +139,9 @@ class T411Commands(cmdline):
 
         infos = self.t411.me().json()
 
-        print 'Uploaded:\t'+str(infos['uploaded'])+' bytes'
-        print 'Downloaded:\t'+str(infos['downloaded'])+' bytes'
-        print 'Ratio:\t'+str(float(infos['uploaded'])/float(infos['downloaded']))
+        print 'Uploaded: \t' + filesize.size(int(infos['uploaded']))+'b'
+        print 'Downloaded: \t' + filesize.size(int(infos['downloaded']))+'b'
+        print 'Ratio:\t{:.2f}'.format(float(infos['uploaded'])/float(infos['downloaded']))
 
     @command('next')
     def next(self, cmdArgs, filterss):
@@ -188,7 +191,7 @@ class T411Commands(cmdline):
 
     def get_download_list(self, cmdArgs):
 
-        if cmdArgs.lower == 'all':
+        if cmdArgs.lower() == 'all':
 
             download_index_list = [torrent['id']for torrent in self.last_search_result['torrents']]
 
@@ -225,6 +228,9 @@ class T411Commands(cmdline):
                 #    torrent_file.write(torrent.content)
 
                 self.transmission.add_torrent(base64.b64encode(torrent.content))
+
+                time.sleep(1)
+
             except Exception as e:
                 print 'Could not add torrent {!s} to download queue [{!s}]'.\
                         format(self.last_search_result['torrents'][index]['name'].encode('utf-8'), e)
