@@ -2,17 +2,26 @@ __author__ = 'Nicolas'
 import inspect
 
 def command(command_string):
+    """
+    Decorator for commands (command_string is the command itself)
+    """
     def decorator(func):
         func.command_string = command_string
         return func
 
     return decorator
 
-class cmdline(object):
 
-
+class CmdLine(object):
+    """
+    A class to easily create command line interface:
+    simply decorate commands with the @command operator
+    """
 
     def __init__(self, prompt):
+        """
+        Constructor
+        """
 
         self.prompt = prompt
         self.__load_commands()
@@ -21,12 +30,17 @@ class cmdline(object):
         print 'Type \'help\' for help'
 
     def __load_commands(self):
+        """
+        Visit all class methods that were decorated to build the command list
+        """
         self.commands = {method[1].command_string:  {'method': method[1], 'doc': inspect.getdoc(method[1])}
                          for method in inspect.getmembers(self, predicate=inspect.ismethod)
                          if hasattr(method[1], 'command_string')}
 
     def __create_menu(self):
-
+        """
+        Create a help menu from the doc string of the decorated command methods
+        """
         self.menu = 'T411:\n'
 
         for str, cmd in self.commands.iteritems():
@@ -43,12 +57,18 @@ class cmdline(object):
 
     @command('quit')
     def quit(self, cmdArgs, filters):
+        """
+        This is the command to quit.
+        """
         pass
 
     @staticmethod
     def confirm(question):
+        """
+        Ask user a question, return True if the answer is yes, false otherwise.
+        """
 
-        answer = raw_input(question+ ' (Y/N): ')
+        answer = raw_input(question + ' (Y/N): ')
 
         return answer.lower() == 'y'
 
@@ -61,6 +81,13 @@ class cmdline(object):
 
     @staticmethod
     def parse_command_line(line):
+        """
+        Parse the command line and extract:
+        - The command
+        - its arguments
+        - Its filters
+        Format is "cmd cmdArg | filter1 arg | filter2 arg"
+        """
 
         filters = list()
         cmdArgs = ''
@@ -78,6 +105,9 @@ class cmdline(object):
         return cmd, cmdArgs, filters
 
     def run(self):
+        """
+        CLI loop
+        """
 
         cmd = ''
 

@@ -5,19 +5,29 @@ import t411
 import transmissionrpc
 import base64
 import re
-from commandline import cmdline, command
+from commandline import CmdLine, command
 import time
 import filesize
 import json
 import os
 
-TRANSMISSION_ADDRESS_FILE = 'transmission.json'
+TRANSMISSION_ADDRESS_FILE = 'transmission.json' #This is the file where the transmission server address is stored
 
 #https://api.t411.me/
 
+
 class TransmissionClient(transmissionrpc.Client):
+    """
+    A wrapper around the transmission.rpc client that also prompt user for the server
+    address, and then stored the answers and reuse it in subsequent constructions.
+    """
 
     def __init__(self):
+        """
+        Constructor: if not TRANSMISSION_ADDRESS_FILE file, ask address to user
+        and save it, otherwise, load the data from the file.
+        Then instantiate the Transmission client.
+        """
         try:
             with open(TRANSMISSION_ADDRESS_FILE) as address_file:
                 connection = json.loads(address_file.read())
@@ -33,8 +43,12 @@ class TransmissionClient(transmissionrpc.Client):
 
     @staticmethod
     def ask_for_connection():
-        address = raw_input('Please enter transmmission RPC address: ')
-        port = raw_input('Please enter transmmission RPC port: ')
+        """
+        Ask the user for the URL and port of the transmission server
+        :return: address and port of the transmission server
+        """
+        address = raw_input('Please enter transmission RPC address: ')
+        port = raw_input('Please enter transmission RPC port: ')
 
         connection_data = json.dumps({'address': '%s' % address, 'port': '%s' % port})
         with open(TRANSMISSION_ADDRESS_FILE, 'w') as connection_file:
@@ -42,11 +56,18 @@ class TransmissionClient(transmissionrpc.Client):
 
         return address, port
 
-class T411Commands(cmdline):
 
-    __result_len_limit__ = 20
+class T411Commands(CmdLine):
+    """
+    This the T411 command line interface
+    """
+
+    __result_len_limit__ = 20  # can be adjusted by the limit command
 
     def __init__(self):
+        """
+        Constructor: create T411 and transmission client connections.
+        """
         super(T411Commands, self).__init__(prompt='T411')
 
         self.query_filters_names = ('cid',)
@@ -69,6 +90,13 @@ class T411Commands(cmdline):
         print 'Type \'help\' for help'
 
     def get_search_string(self, query, filters):
+        """
+        Create the T411 API search string
+
+        :param query:   Queried string the user added
+        :param filters: The list of filters the user en entered (after pipe symbols)
+        :return:        The T411 API post request string
+        """
 
         base_search_string = query+'?offset='+str(self.offset)+'&limit='+str(self.__result_len_limit__)
 
@@ -83,6 +111,12 @@ class T411Commands(cmdline):
 
     @staticmethod
     def grep_results(results, filter_argument):
+        """
+        Filter the results by name using the regular expressions
+        :param results:         Search result
+        :param filter_argument: Regular expression
+        :return:    results, but only those for which the name match regexp
+        """
 
         filter = re.compile(filter_argument[0])
 
@@ -94,20 +128,28 @@ class T411Commands(cmdline):
         return filtered_result
 
     def print_search_results(self):
+        """
+        Display the last search results on screen.
+        """
 
         print 'Found {!s} torrent'.format(self.last_search_result['total'])
         if self.last_search_result:
             for i, torrent in enumerate(self.last_search_result['torrents']):
                 print '\t-{!s} {} [{!s} -{!s}-]\t seeders:{!s}\t size = {!s}b'.format(i,
-                                                        torrent['name'].encode('utf-8'),
-                                                        torrent['categoryname'].encode('utf-8'),
-                                                        torrent['category'],
-                                                        torrent['seeders'],
-                                                        filesize.size(int(torrent['size'])))
+                                                                        torrent['name'].encode('utf-8'),
+                                                                        torrent['categoryname'].encode('utf-8'),
+                                                                        torrent['category'],
+                                                                        torrent['seeders'],
+                                                                        filesize.size(int(torrent['size'])))
         else:
             print 'Nothing found.'
 
     def search_t411(self, filters):
+        """
+        Initiate a search on T411 and filters the results
+        :param filters:     Filters to apply to the search
+        :return:
+        """
         query_result = self.t411.search(self.get_search_string(self.last_query_string, filters)).json()
 
         for filter in filters:
@@ -119,7 +161,10 @@ class T411Commands(cmdline):
     @command('reset')
     def reset(self, cmdArgs, filters):
         """
-        Reset saved settings (credentials and addresses)
+            Reset saved settings (credentials and addresses).
+            Accepted arguments are:
+            [t411] -> to reset t411 credentials
+            [transmission] ->  to reset transmission server address
         """
         if cmdArgs.lower() == 't411':
             os.remove(t411.USER_CREDENTIALS_FILE)
@@ -129,7 +174,7 @@ class T411Commands(cmdline):
     @command('clear')
     def clear(self, *args):
         """
-        Clear previous results
+        Clear previous search results
         """
         self.offset = 0
         self.last_search_result = dict()
@@ -139,7 +184,7 @@ class T411Commands(cmdline):
     @command('limit')
     def limit(self, cmdArgs, filters):
         """
-        set query limit
+        set limit on query result (default is 20, argument is new limit)
         """
         if cmdArgs:
             try:
@@ -154,6 +199,7 @@ class T411Commands(cmdline):
         """
             [query string] -> Search Torrent
             accept filters: cid [category_id] or grep [name regex filter]
+            for example: search avatar | cid 5 | grep ava[1-2]
         """
         self.last_query_string = str(cmdArgs)
         self.last_query_filters = filters
@@ -164,7 +210,7 @@ class T411Commands(cmdline):
     @command('info')
     def info(self, cmdArgs, filters):
         """
-            [torrentID] -> Get Torrent Info
+        [torrentID] -> Get Torrent Info
         """
 
         infos = self.t411.details(self.last_search_result['torrents'][int(cmdArgs)]['id']).json()
@@ -187,7 +233,7 @@ class T411Commands(cmdline):
     @command('next')
     def next(self, cmdArgs, filterss):
         """
-            Shows next results for last query
+         Shows next results for last query
         """
         if self.last_search_result:
             self.offset += self.__result_len_limit__
@@ -201,7 +247,7 @@ class T411Commands(cmdline):
     @command('previous')
     def previous(self, cmdArgs, filters):
         """
-            Shows previous results for last query
+        Shows previous results for last query
         """
         if self.last_search_result:
             self.offset -= self.__result_len_limit__
@@ -217,7 +263,7 @@ class T411Commands(cmdline):
     @command('cat')
     def cat(self, cmdArgs, filters):
         """
-            List categories
+        List categories
         """
         cat_list = self.t411.categories().json()
 
@@ -231,6 +277,9 @@ class T411Commands(cmdline):
                         print '\t\t-{!s}:\t{!s}'.format(subcat_id, subcat_info['name'].encode('utf-8'))
 
     def get_download_list(self, cmdArgs):
+        """
+        Return a list of indexes in the last search result that are selected by the user.
+        """
 
         if cmdArgs.lower() == 'all':
 
@@ -246,7 +295,7 @@ class T411Commands(cmdline):
                 download_index_list = cmdArgs.split(',')
 
         if len(download_index_list) > 1:
-            if not cmdline.confirm("Are you want to download the {!s} torrents".format(len(download_index_list))):
+            if not CmdLine.confirm("Are you want to download the {!s} torrents".format(len(download_index_list))):
                 download_index_list = list()
 
         return map(int, download_index_list)
@@ -254,8 +303,11 @@ class T411Commands(cmdline):
     @command('download')
     def download(self, cmdArgs, filters):
         """
-            [search result index] -> Download torrent
-            TODO: more complex download pattern
+            Download torrent. Accepted arguments are:
+            ["all"] -> download all results
+            [X,Y] -> download torrents with result indexes X and Y.
+            [X-Y] -> download torrents with result indexes from X to Y.
+            [X] -> download torrents with result indexes X.
         """
 
         download_index_list = self.get_download_list(cmdArgs)
@@ -280,8 +332,6 @@ class T411Commands(cmdline):
                     .format(self.last_search_result['torrents'][index]['name'].encode('utf-8'))
 
 if __name__ == '__main__':
-
-    #test = transmissionWithSetting()
 
     cli = T411Commands()
 
