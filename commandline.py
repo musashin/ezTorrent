@@ -49,7 +49,7 @@ class CmdLine(object):
                 doclines = cmd['doc'].splitlines()
                 self.menu += '\t-{:<10}:\t{!s}\n'.format(str, doclines[0])
 
-                if len(doclines)>1:
+                if len(doclines) > 1:
                     for line in doclines[1:]:
                         self.menu += '              \t{!s}\n'.format(line)
             except:
