@@ -57,7 +57,7 @@ class T411(object):
 
     def _auth(self, username, password) :
         """ Authentificate user and store token """
-        self.user_credentials = self.call('auth', {'username': username, 'password': password})
+        self.user_credentials = self.call('auth', {'username': username, 'password': password}).json()
         print(self.user_credentials)
         if 'error' in self.user_credentials:
             raise T411Exception('Error while fetching authentication token: %s'\
