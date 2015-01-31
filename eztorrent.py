@@ -1,15 +1,46 @@
+#!/usr/bin/env python
+
 __author__ = 'Nicolas'
 import t411
-import os
 import transmissionrpc
 import base64
-import inspect
 import re
 from commandline import cmdline, command
 import time
 import filesize
+import json
+import os
+
+TRANSMISSION_ADDRESS_FILE = 'transmission.json'
 
 #https://api.t411.me/
+
+class TransmissionClient(transmissionrpc.Client):
+
+    def __init__(self):
+        try:
+            with open(TRANSMISSION_ADDRESS_FILE) as address_file:
+                connection = json.loads(address_file.read())
+                if 'address' not in connection or 'port' not in connection:
+                    address, port = self.ask_for_connection()
+                else:
+                    address = connection['address']
+                    port = connection['port']
+        except:
+            address, port = self.ask_for_connection()
+
+        super(TransmissionClient, self).__init__(address=address, port=int(port))
+
+    @staticmethod
+    def ask_for_connection():
+        address = raw_input('Please enter transmmission RPC address: ')
+        port = raw_input('Please enter transmmission RPC port: ')
+
+        connection_data = json.dumps({'address': '%s' % address, 'port': '%s' % port})
+        with open(TRANSMISSION_ADDRESS_FILE, 'w') as connection_file:
+            connection_file.write(connection_data)
+
+        return address, port
 
 class T411Commands(cmdline):
 
@@ -29,7 +60,7 @@ class T411Commands(cmdline):
 
         try:
             print 'Connecting to Transmission'
-            self.transmission = transmissionrpc.Client(address='nicorasp.local', port=9091)
+            self.transmission = TransmissionClient()
         except Exception as e:
             print 'Could not connect to Transmission: '+str(e)
 
@@ -84,6 +115,16 @@ class T411Commands(cmdline):
                 query_result = self.result_filters[filter['type']](query_result, filter['arg'])
 
         return query_result
+
+    @command('reset')
+    def reset(self, cmdArgs, filters):
+        """
+        Reset saved settings (credentials and addresses)
+        """
+        if cmdArgs.lower() == 't411':
+            os.remove(t411.USER_CREDENTIALS_FILE)
+        elif cmdArgs.lower() == 'transmission':
+            os.remove(TRANSMISSION_ADDRESS_FILE)
 
     @command('clear')
     def clear(self, *args):
@@ -239,6 +280,8 @@ class T411Commands(cmdline):
                     .format(self.last_search_result['torrents'][index]['name'].encode('utf-8'))
 
 if __name__ == '__main__':
+
+    #test = transmissionWithSetting()
 
     cli = T411Commands()
 
