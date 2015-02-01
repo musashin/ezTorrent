@@ -216,7 +216,7 @@ class T411Commands(CmdLine):
         infos = self.t411.details(self.last_search_result['torrents'][int(cmdArgs)]['id']).json()
 
         for key, value in infos['terms'].iteritems():
-            print '\t- ' + key + ':\t' + value
+            print '\t- ' + key.encode('utf-8') + ':\t' + value.encode('utf-8')
 
     @command('user')
     def user(self, cmdArgs, filters):
