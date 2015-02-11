@@ -98,6 +98,8 @@ class T411Commands(CmdLine):
         :return:        The T411 API post request string
         """
 
+        query = query.replace(' ', '+')
+
         base_search_string = query+'?offset='+str(self.offset)+'&limit='+str(self.__result_len_limit__)
 
         query_filters = [(index, filter['type'], filter['arg']) for index, filter in enumerate(filters)
