@@ -15,7 +15,7 @@ from json import loads, dumps
 from requests import post, codes
 
 HTTP_OK = 200
-API_URL = 'https://api.t411.me/%s'
+API_URL = 'https://api.t411.io/%s'
 USER_CREDENTIALS_FILE = 'user.json'
 
 
