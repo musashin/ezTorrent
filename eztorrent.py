@@ -87,8 +87,6 @@ class T411Commands(CmdLine):
 
         self.clear()
 
-        print 'Type \'help\' for help'
-
     def get_search_string(self, query, filters):
         """
         Create the T411 API search string

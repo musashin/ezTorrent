@@ -47,7 +47,7 @@ class T411(object):
             # we have to ask the user for its credentials and get
             # the token from the API
             user = raw_input('Please enter username: ')
-            password = getpass('Please enter password: ')
+            password = raw_input('Please enter password: ')
             self._auth(user, password)
         except T411Exception as e:
             raise T411Exception(e.message)
