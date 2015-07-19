@@ -98,7 +98,7 @@ class CmdLine(object):
                 filters.append({'type': (ele.split())[0], 'arg': (ele.split())[1:]})
             else:
 
-                if len(ele.split())>1:
+                if len(ele.split()) > 0:
                     cmd = (ele.split())[0]
                     cmdArgs = ' '.join(ele.split()[1:])
 
